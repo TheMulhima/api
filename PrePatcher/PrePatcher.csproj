@@ -7,6 +7,7 @@
         <Product>PrePatcher</Product>
         <Copyright>Copyright © 2019</Copyright>
         <OutputPath>bin\$(Configuration)\</OutputPath>
+        <LangVersion>9</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -18,11 +19,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <TargetDirFiles Include="$(TargetDir)/*.*" />
+        <TargetDirFiles Include="$(TargetDir)\**" />
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-        <Copy SourceFiles="@(TargetDirFiles)" DestinationFolder="$(ProjectDir)Output/" />
+        <MakeDir Directories="$(ProjectDir)Output" />
+        <Copy SourceFiles="@(TargetDirFiles)" DestinationFolder="$(ProjectDir)Output" />
     </Target>
 
     <ItemGroup>
@@ -32,7 +34,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Mono.Cecil" Version="0.10.4">
+        <PackageReference Include="Mono.Cecil" Version="0.11.3">
             <IncludeAssets>all</IncludeAssets>
         </PackageReference>
     </ItemGroup>

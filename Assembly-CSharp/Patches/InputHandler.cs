@@ -1,4 +1,5 @@
-﻿using MonoMod;
+﻿using InControl;
+using MonoMod;
 using UnityEngine;
 
 #pragma warning disable 1591
@@ -42,6 +43,28 @@ namespace Modding.Patches
             }
 
             Cursor.visible = true;
+        }
+        
+        public readonly struct KeyOrMouseBinding
+        {
+            public readonly Key Key;
+            public readonly Mouse Mouse;
+
+            public KeyOrMouseBinding(Key key)
+            {
+                this.Key = key;
+                this.Mouse = Mouse.None;
+            }
+
+            public KeyOrMouseBinding(Mouse mouse)
+            {
+                this.Key = Key.None;
+                this.Mouse = mouse;
+            }
+
+            public static bool IsNone(InputHandler.KeyOrMouseBinding val) => val.Key == Key.None && val.Mouse == Mouse.None;
+
+            public override string ToString() => this.Mouse != Mouse.None ? this.Mouse.ToString() : this.Key.ToString();
         }
     }
 }

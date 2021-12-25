@@ -384,6 +384,8 @@ namespace Modding
             Loaded = true;
 
             ModHooks.Instance.SaveGlobalSettings();
+            
+            new ModListMenu().InitMenuCreation();
 
             Object.Destroy(coroutineHolder.gameObject);
         }

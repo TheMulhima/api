@@ -1,4 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <RootNamespace>Modding</RootNamespace>
         <AssemblyName>Assembly-CSharp.mm</AssemblyName>
@@ -79,7 +80,7 @@
         <PackageReference Include="MonoMod.RuntimeDetour" Version="21.1.11.1">
             <IncludeAssets>all</IncludeAssets>
         </PackageReference>
-        
+
         <PackageReference Include="MonoMod.RuntimeDetour.HookGen" Version="21.1.11.1">
             <IncludeAssets>all</IncludeAssets>
         </PackageReference>
@@ -98,17 +99,17 @@
             <HintPath>../Vanilla/mscorlib.dll</HintPath>
         </Reference>
         <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=null">
-          <HintPath>..\JsonNet\Newtonsoft.Json.dll</HintPath>
+            <HintPath>..\JsonNet\Newtonsoft.Json.dll</HintPath>
         </Reference>
         <Reference Include="PlayMaker, Version=1.6.0.0, Culture=neutral, processorArchitecture=MSIL">
             <HintPath>../Vanilla/PlayMaker.dll</HintPath>
             <SpecificVersion>False</SpecificVersion>
         </Reference>
         <Reference Include="System, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
-            <HintPath>../../../../../usr/lib64/mono/2.0-api/System.dll</HintPath>
+            <HintPath>../Vanilla/System.dll</HintPath>
         </Reference>
         <Reference Include="System.Xml, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
-            <HintPath>../../../../../usr/lib64/mono/2.0-api/System.Xml.dll</HintPath>
+            <HintPath>../Vanilla/System.Xml.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
             <HintPath>../Vanilla/UnityEngine.dll</HintPath>

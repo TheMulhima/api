@@ -23,7 +23,7 @@ namespace Modding
     [PublicAPI]
     public class ModHooks
     {
-        private const int _modVersion = 60;
+        private const int _modVersion = 61;
         
         internal static bool IsInitialized;
 
@@ -70,7 +70,6 @@ namespace Modding
 
         private ModHooks()
         {
-            ModManager _ = new ModManager();
             Logger.SetLogLevel(GlobalSettings.LoggingLevel);
             
             GameVersion gameVersion;
