@@ -98,7 +98,7 @@ namespace Modding
 
             Log("Initializing");
 
-            _globalSettingsPath ??= Path.Combine(Application.persistentDataPath, $"{GetType().Name}.GlobalSettings.json");
+            _globalSettingsPath ??= Path.Combine(Application.persistentDataPath, $"{GetType().Name}.GlobalSettings_Alt.json");
 
             LoadGlobalSettings();
             HookSaveMethods();
