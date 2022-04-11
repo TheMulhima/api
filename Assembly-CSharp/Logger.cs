@@ -34,7 +34,7 @@ namespace Modding
 
             Directory.CreateDirectory(OldLogDir);
 
-            string current = Path.Combine(Application.persistentDataPath, "ModLog.txt");
+            string current = Path.Combine(Application.persistentDataPath, "ModLog_Alt.txt");
 
             BackupLog(current, OldLogDir);
             
@@ -53,7 +53,7 @@ namespace Modding
             
             string time = File.GetCreationTimeUtc(path).ToString("MM dd yyyy (HH mm ss)", CultureInfo.InvariantCulture);
             
-            File.Move(path, Path.Combine(dir, $"ModLog {time}.txt"));
+            File.Move(path, Path.Combine(dir, $"ModLog_Alt {time}.txt"));
         }
 
         internal static void ClearOldModlogs()
