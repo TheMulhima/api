@@ -60,7 +60,7 @@ namespace Modding
                                     ParentAnchor = new Vector2(1f, 1f),
                                     Offset = new Vector2(-310f, 0f)
                                 },
-                                SelectionPadding = _ => (-60, 0)
+                                SelectionPadding = _ => (-120, 120)
                             },
                             new RelLength(0f),
                             RegularGridLayout.CreateVerticalLayout(105f),
@@ -225,7 +225,7 @@ namespace Modding
                                 "ModMenuButton",
                                 new MenuButtonConfig
                                 {
-                                    CancelAction = self => UIManager.instance.UIGoToMainMenu(),
+                                    CancelAction = self => UIManager.instance.UILeaveOptionsMenu(),
                                     Label = "Mods",
                                     SubmitAction = GoToModListMenu,
                                     Proceed = true,
