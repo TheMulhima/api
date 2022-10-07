@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -128,10 +128,10 @@ namespace Modding.Patches
 
                     if (this.playerData != null)
                     {
-                        this.playerData.playTime += this.sessionPlayTimer;
+                        this.playerData.SetFloat(nameof(PlayerData.playTime), this.playerData.GetFloat(nameof(PlayerData.playTime)) + this.sessionPlayTimer);
                         this.ResetGameTimer();
-                        this.playerData.version = Constants.GAME_VERSION;
-                        this.playerData.profileID = saveSlot;
+                        this.playerData.SetString(nameof(PlayerData.version), Constants.GAME_VERSION);
+                        this.playerData.SetInt(nameof(PlayerData.profileID), saveSlot);
                         this.playerData.CountGameCompletion();
                     }
                     else
@@ -500,15 +500,15 @@ namespace Modding.Patches
                         global::PlayerData playerData = saveGameData.playerData;
                         SaveStats saveStats = new SaveStats
                         (
-                            playerData.maxHealthBase,
-                            playerData.geo,
-                            playerData.mapZone,
-                            playerData.playTime,
-                            playerData.MPReserveMax,
-                            playerData.permadeathMode,
-                            playerData.bossRushMode,
-                            playerData.completionPercentage,
-                            playerData.unlockedCompletionRate
+                            playerData.GetInt(nameof(PlayerData.maxHealthBase)),
+                            playerData.GetInt(nameof(PlayerData.geo)),
+                            playerData.GetVariable<GlobalEnums.MapZone>(nameof(PlayerData.mapZone)),
+                            playerData.GetFloat(nameof(PlayerData.playTime)),
+                            playerData.GetInt(nameof(PlayerData.MPReserveMax)),
+                            playerData.GetInt(nameof(PlayerData.permadeathMode)),
+                            playerData.GetBool(nameof(PlayerData.bossRushMode)),
+                            playerData.GetFloat(nameof(PlayerData.completionPercentage)),
+                            playerData.GetBool(nameof(PlayerData.unlockedCompletionRate))
                         );
                         if (callback != null)
                         {
@@ -633,7 +633,7 @@ namespace Modding.Patches
         {
             if (!this.TimeSlowed)
             {
-                if (!this.playerData.disablePause && this.gameState == GlobalEnums.GameState.PLAYING)
+                if (!this.playerData.GetBool(nameof(PlayerData.disablePause)) && this.gameState == GlobalEnums.GameState.PLAYING)
                 {
                     this.gameCams.StopCameraShake();
                     this.inputHandler.PreventPause();

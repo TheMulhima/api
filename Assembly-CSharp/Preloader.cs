@@ -20,7 +20,7 @@ internal class Preloader : MonoBehaviour
     private const int LoadingBarMargin = 12;
     private const int LoadingBarWidth = LoadingBarBackgroundWidth - 2 * LoadingBarMargin;
     private const int LoadingBarHeight = LoadingBarBackgroundHeight - 2 * LoadingBarMargin;
-    
+
     private GameObject _blanker;
     private GameObject _loadingBarBackground;
     private GameObject _loadingBar;
@@ -30,21 +30,23 @@ internal class Preloader : MonoBehaviour
     private float _shownProgress;
     private float _secondsSinceLastSet;
 
-    public IEnumerator Preload(
+    public IEnumerator Preload
+    (
         Dictionary<string, List<(ModLoader.ModInstance, List<string>)>> toPreload,
-        Dictionary<ModLoader.ModInstance, Dictionary<string, Dictionary<string, GameObject>>> preloadedObjects
-        )
+        Dictionary<ModLoader.ModInstance, Dictionary<string, Dictionary<string, GameObject>>> preloadedObjects,
+        Dictionary<string, List<Func<IEnumerator>>> sceneHooks
+    )
     {
         MuteAllAudio();
 
         CreateBlanker();
-        
+
         CreateLoadingBarBackground();
-        
+
         CreateLoadingBar();
-        
-        yield return DoPreload(toPreload, preloadedObjects);
-        
+
+        yield return DoPreload(toPreload, preloadedObjects, sceneHooks);
+
         yield return CleanUpPreloading();
 
         UnmuteAllAudio();
@@ -63,14 +65,11 @@ internal class Preloader : MonoBehaviour
             _loadingBarRect.sizeDelta.y
         );
     }
-    
+
     /// <summary>
     ///     Mutes all audio from AudioListeners.
     /// </summary>
-    private void MuteAllAudio()
-    {
-        AudioListener.pause = true;
-    }
+    private static void MuteAllAudio() => AudioListener.pause = true;
 
     /// <summary>
     ///     Creates the canvas used to show the loading progress.
@@ -79,12 +78,17 @@ internal class Preloader : MonoBehaviour
     private void CreateBlanker()
     {
         _blanker = CanvasUtil.CreateCanvas(RenderMode.ScreenSpaceOverlay, new Vector2(CanvasResolutionWidth, CanvasResolutionHeight));
-        UObject.DontDestroyOnLoad(_blanker);
-        CanvasUtil.CreateImagePanel(
-                _blanker,
-                CanvasUtil.NullSprite(new byte[] {0x00, 0x00, 0x00, 0xFF}),
-                new CanvasUtil.RectData(Vector2.zero, Vector2.zero, Vector2.zero, Vector2.one)
-            )
+        
+        DontDestroyOnLoad(_blanker);
+
+        GameObject panel = CanvasUtil.CreateImagePanel
+        (
+            _blanker,
+            CanvasUtil.NullSprite(new byte[] { 0x00, 0x00, 0x00, 0xFF }),
+            new CanvasUtil.RectData(Vector2.zero, Vector2.zero, Vector2.zero, Vector2.one)
+        );
+
+        panel
             .GetComponent<Image>()
             .preserveAspect = false;
     }
@@ -95,17 +99,19 @@ internal class Preloader : MonoBehaviour
     /// </summary>
     private void CreateLoadingBarBackground()
     {
-        _loadingBarBackground = CanvasUtil.CreateImagePanel(
-                _blanker,
-                CanvasUtil.NullSprite(new byte[] {0xFF, 0xFF, 0xFF, 0xFF}),
-                new CanvasUtil.RectData
-                (
-                    new Vector2(LoadingBarBackgroundWidth, LoadingBarBackgroundHeight),
-                    Vector2.zero,
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(0.5f, 0.5f)
-                )
-            );
+        _loadingBarBackground = CanvasUtil.CreateImagePanel
+        (
+            _blanker,
+            CanvasUtil.NullSprite(new byte[] { 0xFF, 0xFF, 0xFF, 0xFF }),
+            new CanvasUtil.RectData
+            (
+                new Vector2(LoadingBarBackgroundWidth, LoadingBarBackgroundHeight),
+                Vector2.zero,
+                new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f)
+            )
+        );
+        
         _loadingBarBackground.GetComponent<Image>().preserveAspect = false;
     }
 
@@ -115,16 +121,19 @@ internal class Preloader : MonoBehaviour
     /// </summary>
     private void CreateLoadingBar()
     {
-        _loadingBar = CanvasUtil.CreateImagePanel(
+        _loadingBar = CanvasUtil.CreateImagePanel
+        (
             _blanker,
-            CanvasUtil.NullSprite(new byte[] {0x99, 0x99, 0x99, 0xFF}),
-            new CanvasUtil.RectData(
+            CanvasUtil.NullSprite(new byte[] { 0x99, 0x99, 0x99, 0xFF }),
+            new CanvasUtil.RectData
+            (
                 new Vector2(0, LoadingBarHeight),
                 Vector2.zero,
                 new Vector2(0.5f, 0.5f),
                 new Vector2(0.5f, 0.5f)
             )
         );
+        
         _loadingBar.GetComponent<Image>().preserveAspect = false;
         _loadingBarRect = _loadingBar.GetComponent<RectTransform>();
     }
@@ -135,6 +144,9 @@ internal class Preloader : MonoBehaviour
     /// <param name="progress">The progress that should be displayed. 0.0f - 1.0f</param>
     private void UpdateLoadingBarProgress(float progress)
     {
+        if (Mathf.Abs(_commandedProgress - progress) < float.Epsilon) 
+            return;
+        
         _commandedProgress = progress;
         _secondsSinceLastSet = 0.0f;
     }
@@ -143,45 +155,86 @@ internal class Preloader : MonoBehaviour
     ///     This is the actual preloading process.
     /// </summary>
     /// <returns></returns>
-    private IEnumerator DoPreload(
-        Dictionary<string, List<(ModLoader.ModInstance, List<string>)>> toPreload,
-        Dictionary<ModLoader.ModInstance, Dictionary<string, Dictionary<string, GameObject>>> preloadedObjects
-        )
+    private IEnumerator DoPreload
+    (
+        Dictionary<string, List<(ModLoader.ModInstance Mod, List<string> Preloads)>> toPreload,
+        IDictionary<ModLoader.ModInstance, Dictionary<string, Dictionary<string, GameObject>>> preloadedObjects,
+        Dictionary<string, List<Func<IEnumerator>>> sceneHooks
+    )
     {
-        List<string> sceneNames = toPreload.Keys.ToList();
+        List<string> sceneNames = toPreload.Keys.Union(sceneHooks.Keys).ToList();
         Dictionary<string, int> scenePriority = new();
-        Dictionary<string, float> sceneProgress = new();
-            
-        foreach (var sceneName in sceneNames)
-        {
-            scenePriority[sceneName] = toPreload[sceneName].Select(x => x.Item2.Count).Sum();
-            sceneProgress[sceneName] = 0.0f;
-        }
+        Dictionary<string, (AsyncOperation load, AsyncOperation unload)> sceneAsyncOperationHolder = new();
         
-        List<AsyncOperation> preloadOperationQueue = new List<AsyncOperation>(5);
+        foreach (string sceneName in sceneNames)
+        {
+            int priority = 0;
+            
+            if (toPreload.TryGetValue(sceneName, out var requests)) 
+                priority += requests.Select(x => x.Preloads.Count).Sum();
+            
+            scenePriority[sceneName] = priority;
+            sceneAsyncOperationHolder[sceneName] = (null, null);
+        }
 
-        void GetPreloadObjectsOperation(string sceneName)
+        Dictionary<string, GameObject> GetModScenePreloadedObjects(ModLoader.ModInstance mod, string sceneName)
+        {
+            if (!preloadedObjects.TryGetValue
+            (
+                mod,
+                out Dictionary<string, Dictionary<string, GameObject>> modPreloadedObjects
+            ))
+            {
+                preloadedObjects[mod] = modPreloadedObjects = new Dictionary<string, Dictionary<string, GameObject>>();
+            }
+            
+            // ReSharper disable once InvertIf
+            if (!modPreloadedObjects.TryGetValue
+            (
+                sceneName,
+                out Dictionary<string, GameObject> modScenePreloadedObjects
+            ))
+            {
+                modPreloadedObjects[sceneName] = modScenePreloadedObjects = new Dictionary<string, GameObject>();
+            }
+            
+            return modScenePreloadedObjects;
+        }
+
+        var preloadOperationQueue = new List<AsyncOperation>(5);
+
+        IEnumerator GetPreloadObjectsOperation(string sceneName)
         {
             Scene scene = USceneManager.GetSceneByName(sceneName);
+            
             GameObject[] rootObjects = scene.GetRootGameObjects();
+            
             foreach (var go in rootObjects)
-            {
                 go.SetActive(false);
+
+            if (sceneHooks.TryGetValue(scene.name, out List<Func<IEnumerator>> hooks))
+            {
+                // ToArray to force a strict select, that way we start them all simultaneously
+                foreach (IEnumerator hook in hooks.Select(x => x()).ToArray())
+                    yield return hook;
             }
 
+            if (!toPreload.TryGetValue(sceneName, out var sceneObjects)) 
+                yield break;
+            
             // Fetch object names to preload
-            List<(ModLoader.ModInstance, List<string>)> sceneObjects = toPreload[sceneName];
-
             foreach ((ModLoader.ModInstance mod, List<string> objNames) in sceneObjects)
             {
                 Logger.APILogger.LogFine($"Fetching objects for mod \"{mod.Mod.GetName()}\"");
+
+                Dictionary<string, GameObject> scenePreloads = GetModScenePreloadedObjects(mod, sceneName);
 
                 foreach (string objName in objNames)
                 {
                     Logger.APILogger.LogFine($"Fetching object \"{objName}\"");
 
                     GameObject obj;
-                    
+
                     try
                     {
                         obj = UnityExtensions.GetGameObjectFromArray(rootObjects, objName);
@@ -191,7 +244,7 @@ internal class Preloader : MonoBehaviour
                         Logger.APILogger.LogWarn($"Invalid GameObject name {objName}");
                         continue;
                     }
-                    
+
                     if (obj == null)
                     {
                         Logger.APILogger.LogWarn(
@@ -200,34 +253,13 @@ internal class Preloader : MonoBehaviour
                         continue;
                     }
 
-                    // Create all sub-dictionaries if necessary (Yes, it's terrible)
-                    if (!preloadedObjects.TryGetValue
-                        (
-                            mod,
-                            out Dictionary<string, Dictionary<string, GameObject>> modPreloadedObjects
-                        ))
-                    {
-                        modPreloadedObjects = new Dictionary<string, Dictionary<string, GameObject>>();
-                        preloadedObjects[mod] = modPreloadedObjects;
-                    }
-
-                    if (!modPreloadedObjects.TryGetValue
-                        (
-                            sceneName,
-                            out Dictionary<string, GameObject> modScenePreloadedObjects
-                        ))
-                    {
-                        modScenePreloadedObjects = new Dictionary<string, GameObject>();
-                        modPreloadedObjects[sceneName] = modScenePreloadedObjects;
-                    }
-
                     // Create inactive duplicate of requested object
                     obj = Instantiate(obj);
                     DontDestroyOnLoad(obj);
                     obj.SetActive(false);
 
                     // Set object to be passed to mod
-                    modScenePreloadedObjects[objName] = obj;
+                    scenePreloads[objName] = obj;
                 }
             }
         }
@@ -235,33 +267,44 @@ internal class Preloader : MonoBehaviour
         void CleanupPreloadOperation(string sceneName)
         {
             Logger.APILogger.LogFine($"Unloading scene \"{sceneName}\"");
-            var unloadOperation = USceneManager.UnloadSceneAsync(sceneName);
-            unloadOperation.completed += _ =>
-            {
-                sceneProgress[sceneName] = 1.0f;
-                preloadOperationQueue.Remove(unloadOperation);
-            };
-            preloadOperationQueue.Add(unloadOperation);
+            
+            AsyncOperation unloadOp = USceneManager.UnloadSceneAsync(sceneName);
+            
+            sceneAsyncOperationHolder[sceneName] = (sceneAsyncOperationHolder[sceneName].load, unloadOp);
+            
+            unloadOp.completed += _ => preloadOperationQueue.Remove(unloadOp);
+            
+            preloadOperationQueue.Add(unloadOp);
         }
 
         void StartPreloadOperation(string sceneName)
         {
-            Logger.APILogger.LogFine($"Loading scene \"{sceneName}\"");
-            sceneProgress[sceneName] = 0.0f;
-            var preloadOperation = USceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-            preloadOperation.priority = scenePriority[sceneName];
-            preloadOperation.completed += _ =>
+            IEnumerator DoLoad(AsyncOperation load)
             {
-                sceneProgress[sceneName] = 0.5f;
-                preloadOperationQueue.Remove(preloadOperation);
-                GetPreloadObjectsOperation(sceneName);
+                yield return load;
+                
+                preloadOperationQueue.Remove(load);
+                yield return GetPreloadObjectsOperation(sceneName);
                 CleanupPreloadOperation(sceneName);
-            };
-            preloadOperationQueue.Add(preloadOperation);
+            }
+            
+            Logger.APILogger.LogFine($"Loading scene \"{sceneName}\"");
+
+            AsyncOperation loadOp = USceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+
+            StartCoroutine(DoLoad(loadOp));
+            
+            sceneAsyncOperationHolder[sceneName] = (loadOp, null);
+
+            loadOp.priority = scenePriority[sceneName];
+            
+            preloadOperationQueue.Add(loadOp);
         }
 
         int i = 0;
-        float sceneProgressAverage = sceneProgress.Values.Average();
+        
+        float sceneProgressAverage = 0;
+        
         while (sceneProgressAverage < 1.0f)
         {
             while (
@@ -271,12 +314,18 @@ internal class Preloader : MonoBehaviour
             )
             {
                 StartPreloadOperation(sceneNames[i++]);
-                UpdateLoadingBarProgress(sceneProgress.Values.Average());
-                sceneProgressAverage = sceneProgress.Values.Average();
             }
+            
             yield return null;
-            sceneProgressAverage = sceneProgress.Values.Average();
+            
+            sceneProgressAverage = sceneAsyncOperationHolder
+                                   .Values
+                                   .Select(x => (x.load?.progress ?? 0) * 0.5f + (x.unload?.progress ?? 0) * 0.5f)
+                                   .Average();
+            
+            UpdateLoadingBarProgress(sceneProgressAverage);
         }
+
         UpdateLoadingBarProgress(1.0f);
     }
 
@@ -303,7 +352,7 @@ internal class Preloader : MonoBehaviour
         Destroy(_loadingBarBackground);
         Destroy(_blanker);
     }
-    
+
     /// <summary>
     ///     Unmutes all audio from AudioListeners.
     /// </summary>

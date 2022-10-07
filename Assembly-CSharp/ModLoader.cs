@@ -113,7 +113,7 @@ namespace Modding
             string mods = Path.Combine(managed_path, "Mods");
 
             string[] files = Directory.GetDirectories(mods)
-                .Except(new string[] {Path.Combine(mods, "Disabled")})
+                .Except(new string[] { Path.Combine(mods, "Disabled") })
                 .SelectMany(d => Directory.GetFiles(d, "*.dll"))
                 .ToArray();
 
@@ -225,14 +225,18 @@ namespace Modding
             var toPreload = new Dictionary<string, List<(ModInstance, List<string> objectNames)>>();
             // dict<mod, dict<scene, dict<objName, object>>>
             var preloadedObjects = new Dictionary<ModInstance, Dictionary<string, Dictionary<string, GameObject>>>();
-
+            // scene -> respective hooks
+            var sceneHooks = new Dictionary<string, List<Func<IEnumerator>>>();
+            
             Logger.APILogger.Log("Creating mod preloads");
+            
             // Setup dict of scene preloads
-            GetPreloads(orderedMods, scenes, toPreload);
+            GetPreloads(orderedMods, scenes, toPreload, sceneHooks);
+            
             if (toPreload.Count > 0)
             {
                 Preloader pld = coroutineHolder.GetOrAddComponent<Preloader>();
-                yield return pld.Preload(toPreload, preloadedObjects);
+                yield return pld.Preload(toPreload, preloadedObjects, sceneHooks);
             }
 
             foreach (ModInstance mod in orderedMods)
@@ -281,10 +285,12 @@ namespace Modding
             UObject.Destroy(coroutineHolder.gameObject);
         }
 
-        private static void GetPreloads(
+        private static void GetPreloads
+        (
             ModInstance[] orderedMods,
             List<string> scenes,
-            Dictionary<string, List<(ModInstance, List<string> objectNames)>> toPreload
+            Dictionary<string, List<(ModInstance, List<string> objectNames)>> toPreload,
+            Dictionary<string, List<Func<IEnumerator>>> sceneHooks
         )
         {
             foreach (var mod in orderedMods)
@@ -305,10 +311,24 @@ namespace Modding
                 {
                     Logger.APILogger.LogError($"Error getting preload names for mod {mod.Name}\n" + ex);
                 }
-                if (preloadNames == null)
+
+                try
                 {
-                    continue;
+                    foreach (var (scene, hook) in mod.Mod.PreloadSceneHooks())
+                    {
+                        if (!sceneHooks.TryGetValue(scene, out var hooks))
+                            sceneHooks[scene] = hooks = new List<Func<IEnumerator>>();
+
+                        hooks.Add(hook);
+                    }
                 }
+                catch (Exception ex)
+                {
+                    Logger.APILogger.LogError($"Error getting preload hooks for mod {mod.Name}\n" + ex);
+                }
+                
+                if (preloadNames == null)
+                    continue;
 
                 // dict<scene, list<objects>>
                 Dictionary<string, List<string>> modPreloads = new();
@@ -348,6 +368,8 @@ namespace Modding
                         toPreload[scene] = scenePreloads;
                     }
 
+                    Logger.APILogger.LogFine($"`{mod.Name}` preloads {objects.Count} objects in the `{scene}` scene");
+
                     scenePreloads.Add((mod, objects));
                     toPreload[scene] = scenePreloads;
                 }
@@ -357,7 +379,9 @@ namespace Modding
         private static void UpdateModText()
         {
             StringBuilder builder = new StringBuilder();
+            
             builder.AppendLine("Modding API: " + ModHooks.ModVersion);
+            
             foreach (ModInstance mod in ModInstances)
             {
                 if (mod.Error is not ModErrorState err)

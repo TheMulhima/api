@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Mono.Cecil;
@@ -52,7 +53,7 @@ namespace Prepatcher
 
             foreach (TypeDefinition type in module.Types.Where(type => type.HasMethods))
             {
-                foreach (MethodDefinition method in type.Methods)
+                foreach (MethodDefinition method in GetMethodsRecursively(type))
                 {
                     if
                     (
@@ -138,6 +139,31 @@ namespace Prepatcher
             Console.WriteLine("Changed " + changes + " get/set calls");
         }
 
+        /// <summary>
+        /// Yields all methods defined on the given type, or a (recursively) nested type within the given type
+        /// </summary>
+        private static IEnumerable<MethodDefinition> GetMethodsRecursively(TypeDefinition type)
+        {
+            if (type.HasMethods)
+            {
+                foreach (MethodDefinition method in type.Methods)
+                {
+                    yield return method;
+                }
+            }
+
+            if (type.HasNestedTypes)
+            {
+                foreach (TypeDefinition nested in type.NestedTypes)
+                {
+                    foreach (MethodDefinition method in GetMethodsRecursively(nested))
+                    {
+                        yield return method;
+                    }
+                }
+            }
+        }
+
         private static void SwapStFld
         (
             FieldReference field,
@@ -182,11 +208,11 @@ namespace Prepatcher
                 generic.GenericArguments.Add(field.FieldType);
                 callSet = Instruction.Create(OpCodes.Callvirt, generic);
             }
+            
+            il.InsertAfter(instr, callSet);
 
-            instr.OpCode = callSet.OpCode;
-            instr.Operand = callSet.Operand;
-
-            il.InsertBefore(instr, ldstr);
+            instr.OpCode = ldstr.OpCode;
+            instr.Operand = ldstr.Operand;
         }
 
         private static void SwapLdFld
@@ -233,11 +259,11 @@ namespace Prepatcher
                 generic.GenericArguments.Add(field.FieldType);
                 callGet = Instruction.Create(OpCodes.Callvirt, generic);
             }
+            
+            il.InsertAfter(instr, callGet);
 
-            instr.OpCode = callGet.OpCode;
-            instr.Operand = callGet.Operand;
-
-            il.InsertBefore(instr, ldstr);
+            instr.OpCode = ldstr.OpCode;
+            instr.Operand = ldstr.Operand;
         }
 
         private static MethodDefinition GenerateSwappedMethod(TypeDefinition methodParent, MethodReference oldMethod)

@@ -40,16 +40,7 @@ namespace Modding
 
             if (_font == null)
             {
-                foreach (string font in OSFonts)
-                {
-                    _font = Font.CreateDynamicFontFromOSFont(font, _fontSize);
-
-                    // Found a monospace OS font.
-                    if (_font != null)
-                        break;
-
-                    Logger.APILogger.Log($"Font {font} not found.");
-                }
+                _font = Font.CreateDynamicFontFromOSFont(OSFonts, _fontSize);
             }
 
             // Fallback
@@ -83,7 +74,7 @@ namespace Modding
             (
                 background,
                 string.Join(string.Empty, _messages.ToArray()),
-                12,
+                _fontSize,
                 TextAnchor.LowerLeft,
                 new CanvasUtil.RectData(new Vector2(-5, -5), Vector2.zero, Vector2.zero, Vector2.one),
                 _font
