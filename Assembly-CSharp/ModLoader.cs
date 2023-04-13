@@ -161,6 +161,8 @@ namespace Modding
             foreach (Assembly asm in asms)
             {
                 Logger.APILogger.LogDebug($"Loading mods in assembly `{asm.FullName}`");
+                
+                bool foundMod = false;
 
                 try
                 {
@@ -168,6 +170,8 @@ namespace Modding
                     {
                         if (!ty.IsClass || ty.IsAbstract || !ty.IsSubclassOf(typeof(Mod)))
                             continue;
+
+                        foundMod = true;
 
                         Logger.APILogger.LogDebug($"Constructing mod `{ty.FullName}`");
 
@@ -208,6 +212,12 @@ namespace Modding
                 {
                     Logger.APILogger.LogError(e);
                 }
+
+                if (!foundMod)
+                {
+                    AssemblyName info = asm.GetName();
+                    Logger.APILogger.Log($"Assembly {info.Name} ({info.Version}) loaded with 0 mods");
+                }
             }
 
             var scenes = new List<string>();
@@ -233,7 +243,7 @@ namespace Modding
             // Setup dict of scene preloads
             GetPreloads(orderedMods, scenes, toPreload, sceneHooks);
             
-            if (toPreload.Count > 0)
+            if (toPreload.Count > 0 || sceneHooks.Count > 0)
             {
                 Preloader pld = coroutineHolder.GetOrAddComponent<Preloader>();
                 yield return pld.Preload(toPreload, preloadedObjects, sceneHooks);
@@ -386,7 +396,7 @@ namespace Modding
             {
                 if (mod.Error is not ModErrorState err)
                 {
-                    if (mod.Enabled) builder.AppendLine($"{mod.Name} : {mod.Mod.GetVersion()}");
+                    if (mod.Enabled) builder.AppendLine($"{mod.Name} : {mod.Mod.GetVersionSafe(returnOnError: "ERROR")}");
                 }
                 else
                 {

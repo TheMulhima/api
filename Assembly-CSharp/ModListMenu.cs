@@ -103,7 +103,7 @@ namespace Modding
                                                         Style = HorizontalOptionStyle.VanillaStyle,
                                                         Description = new DescriptionInfo
                                                         {
-                                                            Text = $"v{modInst.Mod.GetVersion()}"
+                                                            Text = $"v{modInst.Mod.GetVersionSafe(returnOnError: "???")}"
                                                         }
                                                     },
                                                     out var opt
@@ -144,13 +144,13 @@ namespace Modding
                                                 {
                                                     Style = MenuButtonStyle.VanillaStyle,
                                                     CancelAction = _ => this.ApplyChanges(),
-                                                    Label = toggleDels == null ? $"{modInst.Name} {Lang.Get("MAIN_OPTIONS", "MainMenu")}" : modInst.Name,
+                                                    Label = modInst.Mod.GetMenuButtonText(),
                                                     SubmitAction = _ => ((Patch.UIManager)UIManager.instance)
                                                         .UIGoToDynamicMenu(menu),
                                                     Proceed = true,
                                                     Description = new DescriptionInfo
                                                     {
-                                                        Text = $"v{modInst.Mod.GetVersion()}"
+                                                        Text = $"v{modInst.Mod.GetVersionSafe(returnOnError: "???")}"
                                                     }
                                                 }
                                             );
@@ -158,7 +158,7 @@ namespace Modding
                                         }
                                         catch (Exception e)
                                         {
-                                            Logger.APILogger.LogError(e);
+                                            Logger.APILogger.LogError($"Error creating menu for {nameof(IMenuMod)} {modInst.Name}\n" + e);
                                         }
                                     }
                                     else if (modInst.Mod is ICustomMenuMod icmmod)
@@ -173,13 +173,13 @@ namespace Modding
                                                 {
                                                     Style = MenuButtonStyle.VanillaStyle,
                                                     CancelAction = _ => this.ApplyChanges(),
-                                                    Label = toggleDels == null ? $"{modInst.Name} {Lang.Get("MAIN_OPTIONS", "MainMenu")}" : modInst.Name,
+                                                    Label = modInst.Mod.GetMenuButtonText(),
                                                     SubmitAction = _ => ((Patch.UIManager)UIManager.instance)
                                                         .UIGoToDynamicMenu(menu),
                                                     Proceed = true,
                                                     Description = new DescriptionInfo
                                                     {
-                                                        Text = $"v{modInst.Mod.GetVersion()}"
+                                                        Text = $"v{modInst.Mod.GetVersionSafe(returnOnError: "???")}"
                                                     }
                                                 }
                                             );
@@ -187,7 +187,7 @@ namespace Modding
                                         }
                                         catch (Exception e)
                                         {
-                                            Logger.APILogger.LogError(e);
+                                            Logger.APILogger.LogError($"Error creating menu for {nameof(ICustomMenuMod)} {modInst.Name}\n" + e);
                                         }
                                     }
                                 }

@@ -99,10 +99,27 @@ namespace Modding
 
             Log("Initializing");
 
-            _globalSettingsPath ??= Path.Combine(Application.persistentDataPath, $"{GetType().Name}.GlobalSettings.json");
+            _globalSettingsPath ??= GetGlobalSettingsPath();
 
             LoadGlobalSettings();
             HookSaveMethods();
+        }
+
+        private string GetGlobalSettingsPath()
+        {
+            string globalSettingsFileName = $"{GetType().Name}.GlobalSettings.json";
+
+            string location = GetType().Assembly.Location;
+            string directory = Path.GetDirectoryName(location);
+            string globalSettingsOverride = Path.Combine(directory, globalSettingsFileName);
+
+            if (File.Exists(globalSettingsOverride))
+            {
+                Log("Overriding Global Settings path with Mod directory");
+                return globalSettingsOverride;
+            }
+            
+            return Path.Combine(Application.persistentDataPath, globalSettingsFileName);
         }
 
         /// <inheritdoc />
@@ -165,6 +182,13 @@ namespace Modding
         ///     Called after preloading of all mods.
         /// </summary>
         public virtual void Initialize() { }
+
+        /// <summary>
+        ///     If this mod defines a menu via the <see cref="IMenuMod"/> or <see cref="ICustomMenuMod"/> interfaces, override this method to 
+        ///     change the text of the button to jump to this mod's menu.
+        /// </summary>
+        /// <returns></returns>
+        public virtual string GetMenuButtonText() => $"{GetName()} {Language.Language.Get("MAIN_OPTIONS", "MainMenu")}";
 
         private void HookSaveMethods()
         {
